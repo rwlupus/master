@@ -19,22 +19,25 @@ Private m_avWrongDatesFormat() As Variant
 Sub RunChecks()
 
     Dim avData() As Variant
-    Dim strt As Double
-    
-    strt = Timer
+
+
     avData = Range("A1").CurrentRegion.Value2
     
-'    m_bWrongHeader = WrongHeader(avData)
-'
-'    m_bMissingDates = MissingDates(avData)
-'
-'    m_bMultipleCompany = MultipleCompany(avData)
+    m_bWrongHeader = WrongHeader(avData)
 
-'Stop
+    m_bMissingDates = MissingDates(avData)
+
+    m_bMultipleCompany = MultipleCompany(avData)
+
 
     m_bWrongDatesFormat = WrongDatesFormat(Range("A1").CurrentRegion)
 
-Debug.Print Timer - strt
+
+    If m_bWrongHeader Or m_bMissingDates Or m_bMultipleCompany Or m_bWrongDatesFormat Then GenerateReport
+    
+
+
+
 End Sub
 
 Private Function WrongHeader(p_avData() As Variant) As Boolean
@@ -198,7 +201,6 @@ Private Function WrongDatesFormat(p_rngDateRange As Range) As Boolean
     Dim i As Long
     Dim ccell As Range
 
-   Stop
     p_rngDateRange.Offset(1, 0).Select
         For Each ccell In p_rngDateRange.Offset(1, 0)
         
@@ -266,4 +268,44 @@ Wend
  
   If (arrLbound < tmpHi) Then Quicksort vArray, arrLbound, tmpHi 'conquer
   If (tmpLow < arrUbound) Then Quicksort vArray, tmpLow, arrUbound 'conquer
+End Sub
+
+
+Private Sub GenerateReport()
+    Dim wbReport As Workbook
+    Dim iSheets As Integer
+    Dim shNewSheet As Worksheet
+    Dim avTemp As Variant
+
+    Dim i As Integer
+    
+
+    'abFails = Array(m_bWrongHeader, m_bMultipleCompany, m_bMissingDates, m_bWrongDatesFormat)
+
+    
+    Set wbReport = Workbooks.Add
+    iSheets = wbReport.Worksheets.Count
+    
+ 
+
+
+    If m_bWrongHeader Then
+        Set shNewSheet = wbReport.Worksheets.Add(after:=Sheets(wbReport.Worksheets.Count))
+        shNewSheet.Name = "Wrong header"
+        shNewSheet.Range("A1") = "Expected header"
+        avTemp = Split(HEADER, ",")
+        shNewSheet.Range(Range("C1"), Range("C1").Offset(0, UBound(avTemp))) = avTemp
+        
+        shNewSheet.Range("A3") = "Existing header"
+        avTemp = Split(m_sHeader, ",")
+        shNewSheet.Range(Range("C3"), Range("C3").Offset(0, UBound(avTemp))) = avTemp
+        shNewSheet.Columns.AutoFit
+    
+    End If
+    
+    
+        For i = 1 To iSheets
+            wbReport.Worksheets(i).Visible = False
+        Next
+
 End Sub
