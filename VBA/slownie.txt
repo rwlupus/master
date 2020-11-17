@@ -1,0 +1,168 @@
+Option Explicit
+
+'   robik79@gmail.com'
+'   https://github.com/rwlupus/master/blob/master/VBA/slownie.txt
+'   https://github.com/rwlupus/master/wiki/Funkcja-Slownie
+'   2020-11-17
+    
+    Dim asCyfry(9) As String, asNastki(9) As String, asDziesiatki(9) As String, asSetki(9) As String
+    Dim asWaluta(1, 2) As String, asLiczebnikiGlowne(4, 2) As String
+    Dim strWaluta As String
+    
+    Enum Opcje
+            GROSZ
+            ZLOTY
+            LICZEBNIK
+    End Enum
+    
+Function SŁOWNIE(Kwota As Variant, Optional Grosze_Ułamkowo As Boolean = False, Optional Waluta As String = "") As String
+' Funkcja arkusza do zamiany kwoty pisanej słownie.
+'
+' Argumenty:
+'           Kwota - wymagany, liczba z przedziału -10^15 : 10^15
+'
+'           Grosze_Ułamkowo - opcjonalnie typu Boolean (Prawda, Fałsz, 0,1), domyślna wartość Fałsz oznacza zwrócenie groszy słownie,
+'                            w przeciwnym przypadku format groszy to "00/100"
+'
+'           Waluta - opcjonalnie typu String, jeśli zdefiniowany zostaje użyty zamiast złotych.
+'                    Nie odmienia się przez przypadki dlatego najlepiej użyć kodu waluty, np. "EUR"
+'                    Zdefiniowanie waluty powoduje automatyczną zmianę formatu groszy na "00/100"
+
+    On Error GoTo ErrHandler
+
+    Dim dblZlote As Double, iGrosze As Integer
+    Dim strZlote As String, strGrosze As String
+
+    Dim i As Integer
+
+    Dim strMinus As String, strZloteSlownie As String, strGroszeSlownie As String
+    
+    strWaluta = Waluta
+
+    If Kwota = "" Then
+        SŁOWNIE = ""
+    ElseIf Not IsNumeric(Kwota) Then
+        SŁOWNIE = "#Nie liczba!"
+    ElseIf Round(Abs(Kwota), 2) >= 10 ^ 15 Then
+        SŁOWNIE = "#Błąd wartości!"
+    Else
+        StworzSlownik
+        
+        If Kwota < 0 Then
+            strMinus = "minus"
+            Kwota = Abs(Kwota)
+        End If
+
+        Kwota = Round(Kwota, 2)
+        dblZlote = Int(Kwota)
+
+        strZlote = CStr(dblZlote)
+        iGrosze = (Kwota - dblZlote) * 100
+
+        If Waluta <> "" Then Grosze_Ułamkowo = True
+        
+        If Grosze_Ułamkowo Then
+            strGroszeSlownie = Format(iGrosze, "00") & "/100"
+        Else
+            strGroszeSlownie = ZwrocSlownie(CStr(iGrosze), GROSZ)
+        End If
+
+        strZloteSlownie = ZwrocSlownie(strZlote, ZLOTY)
+
+    End If
+
+        SŁOWNIE = WorksheetFunction.Trim(strMinus & " " & strZloteSlownie & " " & strGroszeSlownie)
+        
+    Exit Function
+
+ErrHandler:
+    SŁOWNIE = "#Nieznany błąd!"
+
+End Function
+
+Private Sub StworzSlownik()
+
+    asCyfry(1) = "jeden": asCyfry(2) = "dwa": asCyfry(3) = "trzy": asCyfry(4) = "cztery"
+    asCyfry(5) = "pięć": asCyfry(6) = "sześć": asCyfry(7) = "siedem": asCyfry(8) = "osiem": asCyfry(9) = "dziewięć"
+
+    asNastki(0) = "dziesięć": asNastki(1) = "jedenaście": asNastki(2) = "dwanaście": asNastki(3) = "trzynaście"
+    asNastki(4) = "czternaście": asNastki(5) = "piętnaście": asNastki(6) = "szesnaście": asNastki(7) = "siedemnaście"
+    asNastki(8) = "osiemnaście": asNastki(9) = "dziewiętnaście"
+
+    asDziesiatki(2) = "dwadzieścia": asDziesiatki(3) = "trzydzieści": asDziesiatki(4) = "czterdzieści"
+    asDziesiatki(5) = "pięćdziesiąt": asDziesiatki(6) = "sześćdziesiąt": asDziesiatki(7) = "siedemdziesiąt"
+    asDziesiatki(8) = "osiemdziesiąt": asDziesiatki(9) = "dziewięćdziesiąt"
+
+    asSetki(1) = "sto": asSetki(2) = "dwieście": asSetki(3) = "trzysta"
+    asSetki(4) = "czterysta": asSetki(5) = "pięćset": asSetki(6) = "sześćset"
+    asSetki(7) = "siedemset": asSetki(8) = "osiemset": asSetki(9) = "dziewięćset"
+
+    asWaluta(0, 0) = "grosz": asWaluta(0, 1) = "grosze": asWaluta(0, 2) = "groszy"
+    asWaluta(1, 0) = "złoty": asWaluta(1, 1) = "złote": asWaluta(1, 2) = "złotych"
+
+    asLiczebnikiGlowne(1, 0) = "tysiąc": asLiczebnikiGlowne(1, 1) = "tysiące": asLiczebnikiGlowne(1, 2) = "tysięcy"
+    asLiczebnikiGlowne(2, 0) = "milion": asLiczebnikiGlowne(2, 1) = "miliony": asLiczebnikiGlowne(2, 2) = "milionów"
+    asLiczebnikiGlowne(3, 0) = "miliard": asLiczebnikiGlowne(3, 1) = "miliardy": asLiczebnikiGlowne(3, 2) = "miliardów"
+    asLiczebnikiGlowne(4, 0) = "bilion": asLiczebnikiGlowne(4, 1) = "biliony": asLiczebnikiGlowne(4, 2) = "bilionów"
+
+End Sub
+
+Private Function ZwrocSlownie(p_strLiczba As String, p_iTyp As Integer) As String
+        
+    Dim strLiczba As String, strTemp As String, strTrzyCyfry As String
+    Dim i As Integer, iIleTrojek As Integer
+       
+    strLiczba = Format(p_strLiczba, String(WorksheetFunction.Ceiling(Len(p_strLiczba), 3), "0"), "0")
+       
+    iIleTrojek = Len(strLiczba) / 3
+    
+    If p_strLiczba = "0" Then
+        strTemp = "zero"
+    Else
+        For i = 1 To iIleTrojek
+            strTrzyCyfry = Mid(strLiczba, i * 3 - 2, 3)
+
+            If Mid(strTrzyCyfry, 2, 1) = 1 Then
+                strTemp = strTemp & " " & asSetki(Left(strTrzyCyfry, 1)) & " " & asNastki(Right(strTrzyCyfry, 1))
+            Else
+                strTemp = strTemp & " " & asSetki(Left(strTrzyCyfry, 1)) & " " & asDziesiatki(Mid(strTrzyCyfry, 2, 1)) & " " & asCyfry(Right(strTrzyCyfry, 1))
+            End If
+            
+            If iIleTrojek > 1 And CDbl(strTrzyCyfry) > 0 Then
+                strTemp = strTemp & " " & OdmienSlowo(strTrzyCyfry, LICZEBNIK, iIleTrojek - i)
+            End If
+            
+        Next
+    End If
+ 
+    ZwrocSlownie = strTemp & " " & OdmienSlowo(strLiczba, p_iTyp)
+ 
+End Function
+
+
+Private Function OdmienSlowo(p_strLiczba As String, p_iTyp As Integer, Optional p_iGrupa As Integer) As String
+    
+    Dim iPrzedostatniaCyfra As Integer, iOstatniaCyfra As Integer, iForma As Integer
+    
+    iPrzedostatniaCyfra = Mid(p_strLiczba, Len(p_strLiczba) - 1, 1)
+    iOstatniaCyfra = Right(p_strLiczba, 1)
+
+    If CDbl(Mid(p_strLiczba, Len(p_strLiczba) - 1, 2)) = 1 Then
+        iForma = 0
+    ElseIf iPrzedostatniaCyfra <> 1 And iOstatniaCyfra >= 2 And iOstatniaCyfra <= 4 Then
+        iForma = 1
+    Else
+        iForma = 2
+    End If
+        
+    If p_iTyp = LICZEBNIK Then
+        OdmienSlowo = asLiczebnikiGlowne(p_iGrupa, iForma)
+    Else
+        If strWaluta = "" Then
+            OdmienSlowo = asWaluta(p_iTyp, iForma)
+        Else
+            OdmienSlowo = strWaluta
+        End If
+    End If
+
+End Function
