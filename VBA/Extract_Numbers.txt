@@ -1,0 +1,48 @@
+Option Explicit
+
+'   robik79@gmail.com'
+'   https://github.com/rwlupus/master/blob/master/VBA/Extract_Numbers.txt
+'   2020-11-18
+
+Function Extract_Numbers(Input_String As String, _
+                         Optional Delimiter As String = "", _
+                         Optional Keep_Characters As String = "") As String
+
+' Function extracts numbers from string
+'
+' Arguments:
+'           Input_String - required type String
+'
+'           Delimiter - optional type String, default is empty string
+'                    each continuous group of digits can be separated using deilimiter
+'
+'           Keep_Characters - optional type String, specify as list without delimiter, case sensitive
+'
+'           Example:
+'           Input_String: "Example street 11/12, 32-876 Some City"
+'           Extract_Numbers(Input_String)= "111232876"
+'           Extract_Numbers(Input_String," ")= "11 12 32 876"
+'           Extract_Numbers(Input_String," ", "/-")= "11/12 32-876"
+
+        On Error GoTo ErrHandler
+        
+        Dim oRegEx As Object
+        Dim i As Long
+        
+        Set oRegEx = CreateObject("vbscript.regexp")
+        
+        If Keep_Characters <> "" Then Keep_Characters = Replace(Replace(Keep_Characters, "\", "\\"), "]", "\]")
+
+        With oRegEx
+            .Pattern = "[^\d" & Keep_Characters & "]+"
+            .Global = True
+        End With
+        
+        Extract_Numbers = Replace(WorksheetFunction.Trim(oRegEx.Replace(Input_String, " ")), " ", Delimiter)
+        
+        Exit Function
+        
+ErrHandler:
+        Extract_Numbers = "#Unknown error!"
+    
+End Function
