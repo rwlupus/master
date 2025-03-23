@@ -1,0 +1,85 @@
+import pandas as pd
+import numpy as np
+
+kolumny_liczbowe = ["Age", "Salary", "Experience", "PerformanceRating", "ProjectCount"]
+ID_kolumna = "ID"
+
+standardowy = {"min": -0.1, "max": 0.1, "percentage": True}
+specjalny = {
+    "Age": {"min": 0, "max": 1, "percentage": False},
+    "ProjectCount": {"min": -2, "max": 2, "percentage": False}
+}
+
+def ZmianyWartosci(new_df, old_df, kolumny_liczbowe, standardowy=None, specjalny=None):
+    if standardowy is None:
+        standardowy = {"min": -0.1, "max": 0.1, "percentage": True}
+
+    if specjalny is None:
+        specjalny = {}
+
+    wspolne = old_df.merge(new_df, on=ID_kolumna, suffixes=("_stary", "_nowy"), how="inner")
+    wspolne["Location"] = new_df["Location"]
+    wspolne["status"] = new_df["status"]
+
+    wyniki = []
+
+    for kolumna in kolumny_liczbowe:
+        p1 = specjalny.get(kolumna, standardowy)["min"]
+        p2 = specjalny.get(kolumna, standardowy)["max"]
+        prog_percentage = specjalny.get(kolumna, standardowy)["percentage"]
+
+        stara = pd.to_numeric(wspolne[f"{kolumna}_stary"], errors='coerce')
+        nowa = pd.to_numeric(wspolne[f"{kolumna}_nowy"], errors='coerce')
+
+        # Warunki pomijania
+        identyczne = stara == nowa
+        null_zero = (stara.isna() & (nowa == 0)) | ((stara == 0) & nowa.isna())
+
+        # Nieliczbowe
+        nieliczbowe = wspolne[f"{kolumna}_stary"].apply(lambda x: not isinstance(x, (int, float))) | wspolne[f"{kolumna}_nowy"].apply(lambda x: not isinstance(x, (int, float)))
+
+        # Różnice
+        roznica = nowa - stara
+        roznica = roznica.where(~nieliczbowe, 'NA')
+
+        # Różnica %
+        with np.errstate(divide='ignore', invalid='ignore'):
+            roznica_pct = (nowa / stara - 1) * 100
+        roznica_pct = roznica_pct.where((stara != 0) & ~nieliczbowe, 'NA')
+
+        # Przekroczenie progu
+        roznica_num = pd.to_numeric(roznica, errors='coerce')
+        roznica_pct_num = pd.to_numeric(roznica_pct, errors='coerce')
+
+        if prog_percentage:
+            prog_przekroczony = (roznica_pct_num < p1 * 100) | (roznica_pct_num > p2 * 100)
+        else:
+            prog_przekroczony = (roznica_num < p1) | (roznica_num > p2)
+
+        prog_przekroczony = prog_przekroczony.fillna(False)
+
+        maska = ~(identyczne | null_zero)
+
+        temp_df = pd.DataFrame({
+            ID_kolumna: wspolne.loc[maska, ID_kolumna],
+            "Location": wspolne.loc[maska, "Location"],
+            "Kolumna": kolumna,
+            "Stara warto\u015b\u0107": wspolne.loc[maska, f"{kolumna}_stary"],
+            "Nowa warto\u015b\u0107": wspolne.loc[maska, f"{kolumna}_nowy"],
+            "R\u00f3\u017cnica": roznica.loc[maska],
+            "R\u00f3\u017cnica %": roznica_pct.loc[maska],
+            "P1": p1,
+            "P2": p2,
+            "Pr\u00f3g %": prog_percentage,
+            "Pr\u00f3g przekroczony": prog_przekroczony.loc[maska]
+        })
+
+        wyniki.append(temp_df)
+
+    return pd.concat(wyniki, ignore_index=True)
+
+# Przyklad uzycia
+new_df = pd.read_csv("new.csv")
+old_df = pd.read_csv("old.csv")
+result = ZmianyWartosci(new_df, old_df, kolumny_liczbowe, standardowy, specjalny)
+print(result)
